@@ -6,3 +6,5 @@
 !cifar10_resnet20_v1_graph.txt
 !cifar10_resnet_accuracy.xlsx
 !.gitignore
+!CIFAR10_CNN.ipynb
+!model_checkpoint/

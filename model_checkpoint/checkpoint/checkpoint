@@ -1,0 +1,2 @@
+model_checkpoint_path: "Resnet20v1_act3b_wnoise0.20"
+all_model_checkpoint_paths: "Resnet20v1_act3b_wnoise0.20"
