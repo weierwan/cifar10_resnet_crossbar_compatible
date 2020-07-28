@@ -1,1 +1,8 @@
-run_cifar10_resnet.sh
+/*
+!cifar10_resnet.py
+!layer_utils.py
+!resnet_model.py
+!layers_numpy.py
+!cifar10_resnet20_v1_graph.txt
+!cifar10_resnet_accuracy.xlsx
+!.gitignore
