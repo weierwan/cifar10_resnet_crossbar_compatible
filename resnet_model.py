@@ -97,7 +97,7 @@ def resnet_v1(input_shape, depth, num_classes=10, activation_bits=None, weight_n
     if (depth - 2) % 6 != 0:
         raise ValueError('depth should be 6n+2 (eg 20, 32, 44 in [a])')
     # Start model definition.
-    num_filters = 12
+    num_filters = 16
     num_res_blocks = int((depth - 2) / 6)
 
     inputs = Input(shape=input_shape)
@@ -186,7 +186,7 @@ def resnet_v2(input_shape, depth, num_classes=10, activation_bits=None, weight_n
     if (depth - 2) % 9 != 0:
         raise ValueError('depth should be 9n+2 (eg 56 or 110 in [b])')
     # Start model definition.
-    num_filters_in = 12
+    num_filters_in = 16
     num_res_blocks = int((depth - 2) / 9)
 
     inputs = Input(shape=input_shape)

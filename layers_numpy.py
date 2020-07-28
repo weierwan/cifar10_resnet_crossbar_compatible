@@ -74,7 +74,7 @@ def batch_normalization(x, gamma, beta, mean, variance, eps=0.001):
 	return out * gamma + beta
 
 
-def merge_conv_batchnorm(w, b, gamma, beta, mean, variance, eps=0.001):
+def merge_conv_batchnorm(W, b, gamma, beta, mean, variance, eps=0.001):
 	std = np.sqrt(variance + eps)
 	w_scaling = gamma / std
 	W_folded = W * w_scaling
