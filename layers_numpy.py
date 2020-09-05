@@ -12,7 +12,7 @@ def quantize_rescale(x, num_bits, max_value):
 
 
 
-def conv(x, w, b, stride=1, pad=(0,0)):
+def conv(x, w, b, stride=1, pad=(0,0), segment_index=None, bias=True):
   N, H, W, C = x.shape
   HH, WW, _, F = w.shape
   HC = int(1 + (H + pad[0] + pad[1] - HH) / stride)
@@ -20,13 +20,17 @@ def conv(x, w, b, stride=1, pad=(0,0)):
   
   out = np.zeros([N,HC,WC,F])
   x_pad = np.pad(x, ((0,0),(pad[0],pad[1]),(pad[0],pad[1]),(0,0)), mode='constant')
-  for i, xi in enumerate(x_pad):
-    for f in range(F):
-        wi = w[:, :, :, f]
-        for row in range(HC):
-            for column in range(WC):
-                tmp = xi[stride*row : stride*row+HH, stride*column : stride*column+WW, :]
-                out[i, row, column, f] = tmp.flatten().dot(wi.flatten()) + b[f]
+
+  for row in range(HC):
+      for column in range(WC):
+          tmp = x_pad[:, stride*row : stride*row+HH, stride*column : stride*column+WW, :].reshape([N, -1])
+          w_tmp = w.reshape([-1, F])
+          if segment_index is not None:
+            tmp = tmp[:, segment_index]
+            w_tmp = w_tmp[segment_index, :]
+          out[:, row, column, :] = tmp.dot(w_tmp)
+  if bias:
+    out += b
   return out
 
 
@@ -60,12 +64,15 @@ def relu(x):
 
 
 def flatten(x):
-    N, H, W, C = x.shape
-    return x.reshape(N, -1)
+  N, H, W, C = x.shape
+  return x.reshape(N, -1)
 
 
-def dense(x, w, b):
-  out = x.dot(w) + b
+def dense(x, w, b, segment_index=None):
+  if segment_index is None:
+    out = x.dot(w) + b
+  else:
+    out = x[:, segment_index].dot(w[segment_index, :]) + b
   return out
 
 

@@ -6,8 +6,8 @@ from tensorflow.keras.layers import Layer
 
 
 class activation_quant(Layer):
-    def __init__(self, num_bits, max_value, trainable_x=True):
-        super(activation_quant, self).__init__()
+    def __init__(self, num_bits, max_value, trainable_x=True, **kwargs):
+        super(activation_quant, self).__init__(**kwargs)
         self.num_bits = num_bits
         self.max_value = max_value
         self.trainable_x = trainable_x
