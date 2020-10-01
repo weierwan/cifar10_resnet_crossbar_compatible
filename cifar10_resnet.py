@@ -1,4 +1,5 @@
 from __future__ import print_function
+import tensorflow as tf
 import tensorflow.keras as keras
 from tensorflow.keras.optimizers import Adam
 from tensorflow.keras.callbacks import ModelCheckpoint, LearningRateScheduler
@@ -14,6 +15,8 @@ import os
 import sys
 
 load_checkpoint = False
+finetune_ckpt_path = None
+finetune = (finetune_ckpt_path is not None)
 batch_size = 128  # orig paper trained all networks with batch_size=128
 epochs = 200
 data_augmentation = True
@@ -132,12 +135,16 @@ else:
       model = resnet_v2(input_shape=input_shape,
                         depth=depth,
                         activation_bits=activation_bits,
-                        weight_noise=weight_noise)
+                        weight_noise=weight_noise,
+                        trainable_conv=not finetune,
+                        trainable_dense=True)
   else:
       model = resnet_v1(input_shape=input_shape,
                         depth=depth,
                         activation_bits=activation_bits,
-                        weight_noise=weight_noise)
+                        weight_noise=weight_noise,
+                        trainable_conv=not finetune,
+                        trainable_dense=True)
 
   model.compile(loss='categorical_crossentropy',
                 optimizer=Adam(learning_rate=lr_schedule(0)),
@@ -145,6 +152,12 @@ else:
 
 model.summary()
 print(model_type)
+
+if finetune:
+    weights_path = os.path.join(os.getcwd(), finetune_ckpt_path)
+    latest = tf.train.latest_checkpoint(weights_path)
+    print(latest)
+    model.load_weights(latest)
 
 
 

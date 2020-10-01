@@ -6,17 +6,15 @@ from tensorflow.keras.layers import Layer
 
 
 class activation_quant(Layer):
-    def __init__(self, num_bits, max_value, trainable_x=True, **kwargs):
+    def __init__(self, num_bits, max_value, **kwargs):
         super(activation_quant, self).__init__(**kwargs)
         self.num_bits = num_bits
         self.max_value = max_value
-        self.trainable_x = trainable_x
         
     def build(self, input_shape):
         self.relux = self.add_weight(name='relux',
                                      shape=[],
-                                     initializer=keras.initializers.Constant(self.max_value),
-                                     trainable=self.trainable_x)
+                                     initializer=keras.initializers.Constant(self.max_value))
 
     def call(self, x):
         act = tf.maximum(tf.minimum(x, self.relux), 0)
@@ -46,12 +44,10 @@ class conv2d_noise(Layer):
         # Create a trainable weight variable for this layer.
         self.kernel = self.add_weight(name='kernel', 
                                       shape=self.kernel_size + (int(input_shape[3]), self.num_filter),
-                                      initializer='glorot_uniform',
-                                      trainable=True)
+                                      initializer='glorot_uniform')
         self.bias = self.add_weight(name='bias',
                                     shape=(self.num_filter,),
-                                    initializer=keras.initializers.Zeros(),
-                                    trainable=True)
+                                    initializer=keras.initializers.Zeros())
         
     def call(self, x, training=None):
         if training is None:
@@ -86,12 +82,10 @@ class dense_noise(Layer):
         # Create a trainable weight variable for this layer.
         self.kernel = self.add_weight(name='kernel', 
                                       shape=[int(input_shape[1]), int(self.output_dim)],
-                                      initializer='glorot_uniform',
-                                      trainable=True)
+                                      initializer='glorot_uniform')
         self.bias = self.add_weight(name='bias',
                                     shape=[int(self.output_dim)],
-                                    initializer=keras.initializers.Zeros(),
-                                    trainable=True)
+                                    initializer=keras.initializers.Zeros())
         
     def call(self, x, training=None):
         if training is None:
