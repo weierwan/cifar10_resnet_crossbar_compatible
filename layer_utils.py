@@ -12,18 +12,22 @@ class activation_quant(Layer):
         self.max_value = max_value
         
     def build(self, input_shape):
-        self.relux = self.add_weight(name='relux',
-                                     shape=[],
-                                     initializer=keras.initializers.Constant(self.max_value))
+        if self.num_bits is not None:
+            self.relux = self.add_weight(name='relux',
+                                         shape=[],
+                                         initializer=keras.initializers.Constant(self.max_value))
 
     def call(self, x):
-        act = tf.maximum(tf.minimum(x, self.relux), 0)
-        act = tf.quantization.fake_quant_with_min_max_vars(
-            act,
-            min=tf.constant(0, dtype=tf.float32),
-            max=self.relux,
-            num_bits=self.num_bits,
-            narrow_range=False)
+        if self.num_bits is not None:
+            act = tf.maximum(tf.minimum(x, self.relux), 0)
+            act = tf.quantization.fake_quant_with_min_max_vars(
+                act,
+                min=tf.constant(0, dtype=tf.float32),
+                max=self.relux,
+                num_bits=self.num_bits,
+                narrow_range=False)
+        else:
+            act = K.relu(x)
         return act
     
     def compute_output_shape(self, input_shape):
@@ -31,10 +35,11 @@ class activation_quant(Layer):
 
     
 class conv2d_noise(Layer):
-    def __init__(self, num_filter, kernel_size=3, activation=None, strides=1, padding='valid', noise_magnitude=0, **kwargs):
+    def __init__(self, num_filter, kernel_size=3, activation=None, strides=1, padding='valid', noise_train=0., noise_test=0., **kwargs):
         super(conv2d_noise, self).__init__(**kwargs)
         self.num_filter = num_filter
-        self.noise_magnitude = noise_magnitude
+        self.noise_train = noise_train
+        self.noise_test = noise_test
         self.kernel_size = (kernel_size, kernel_size)
         self.activation = activation
         self.strides = (strides, strides)
@@ -50,15 +55,13 @@ class conv2d_noise(Layer):
                                     initializer=keras.initializers.Zeros())
         
     def call(self, x, training=None):
-        if training is None:
-            training = K.learning_phase()
         weights = self.kernel
         bias = self.bias
-        training = True
-        if training:
+        noise_magnitude = self.noise_train if training else self.noise_test
+        if noise_magnitude is not None and noise_magnitude > 0:
             w_max = K.max(K.abs(weights))
-            weights = weights + tf.random.normal(self.kernel.shape, mean=0, stddev=w_max * self.noise_magnitude)
-            bias = bias + tf.random.normal(self.bias.shape, stddev=w_max * self.noise_magnitude)
+            weights = weights + tf.random.normal(self.kernel.shape, mean=0, stddev=w_max * noise_magnitude)
+            bias = bias + tf.random.normal(self.bias.shape, stddev=w_max * noise_magnitude)
         act = K.conv2d(x, weights, strides=self.strides, padding=self.padding)
         act = K.bias_add(act, bias)
         if self.activation == 'relu':
@@ -72,10 +75,11 @@ class conv2d_noise(Layer):
 
     
 class dense_noise(Layer):
-    def __init__(self, output_dim, activation=None, noise_magnitude=0, **kwargs):
+    def __init__(self, output_dim, activation=None, noise_train=0., noise_test=0., **kwargs):
         super(dense_noise, self).__init__(**kwargs)
         self.output_dim = output_dim
-        self.noise_magnitude = noise_magnitude
+        self.noise_train = noise_train
+        self.noise_test = noise_test
         self.activation = activation
         
     def build(self, input_shape):
@@ -88,15 +92,13 @@ class dense_noise(Layer):
                                     initializer=keras.initializers.Zeros())
         
     def call(self, x, training=None):
-        if training is None:
-            training = K.learning_phase()
         weights = self.kernel
         bias = self.bias
-        training = True
-        if training:
+        noise_magnitude = self.noise_train if training else self.noise_test
+        if noise_magnitude is not None and noise_magnitude > 0:
             w_max = K.max(K.abs(weights))
-            weights = weights + tf.random.normal(self.kernel.shape, mean=0, stddev=w_max * self.noise_magnitude)
-            bias = bias + tf.random.normal(self.bias.shape, stddev=w_max * self.noise_magnitude)
+            weights = weights + tf.random.normal(self.kernel.shape, mean=0, stddev=w_max * noise_magnitude)
+            bias = bias + tf.random.normal(self.bias.shape, stddev=w_max * noise_magnitude)
         act = K.dot(x, weights) + bias
         if self.activation == 'relu':
             act = K.relu(act)
