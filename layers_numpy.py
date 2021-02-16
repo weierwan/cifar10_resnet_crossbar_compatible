@@ -2,9 +2,9 @@ import numpy as np
 
 
 def quantize_unsigned(x, num_bits, max_value):
-    y = np.maximum(np.minimum(x, max_value), 0.0)
-    y = np.round(y / max_value * (2**num_bits-1))
-    return y
+    x = np.maximum(np.minimum(x, max_value), 0.0)
+    x = np.round(x / max_value * (2**num_bits-1))
+    return x
 
 
 def quantize_rescale(x, num_bits, max_value):
@@ -18,7 +18,7 @@ def conv(x, w, b, stride=1, pad=(0,0), segment_index=None, bias=True):
   HC = int(1 + (H + pad[0] + pad[1] - HH) / stride)
   WC = int(1 + (W + pad[0] + pad[1] - WW) / stride)
   
-  out = np.zeros([N,HC,WC,F], dtype=np.float16)
+  out = np.zeros([N,HC,WC,F])
   x_pad = np.pad(x, ((0,0),(pad[0],pad[1]),(pad[0],pad[1]),(0,0)), mode='constant')
 
   for row in range(HC):

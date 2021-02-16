@@ -23,12 +23,12 @@ num_segment_current = 2
 
 model_name = 'filter16_act%db_wnoise%.2f_input0.95' % (activation_bits, weight_noise_train)
 model_type = 'ResNet%dv%d_%s' % (20, 1, model_name)
-orig_model_name = 'fwd_finetune_conv2d_noise'#'cifar10_%s_model' % model_type
+orig_model_name = 'fwd_finetune_conv2d_noise_2'#'cifar10_%s_model' % model_type
 
 print('Model name: %s' % model_type)
 
-finetune_previous_layer = 'conv2d_noise'
-finetune_current_layer = 'conv2d_noise_1'
+finetune_previous_layer = 'add'
+finetune_current_layer = 'conv2d_noise_3'
 print('Finetuning input from %s' % finetune_current_layer)
 ft_model_name = 'fwd_finetune_%s' % finetune_current_layer
 
@@ -44,21 +44,21 @@ def resnet20_finetune(activation_bits, weight_noise_train, weight_noise_test):
 
 	# y = conv2d_noise(16, strides=1, padding='same', noise_train=weight_noise_train, noise_test=weight_noise_test, name='conv2d_noise')(layer_input_0)
 	# y = BatchNormalization(name='batch_normalization')(y)
-	y = activation_quant(num_bits=activation_bits, max_value=3, name='activation_quant')(layer_input_0)
+	# y = activation_quant(num_bits=activation_bits, max_value=3, name='activation_quant')(layer_input_0)
 
 	# Stack 1, block 1
 	# x = conv2d_noise(16, strides=1, padding='same', noise_train=weight_noise_train, noise_test=weight_noise_test, name='conv2d_noise_1')(y)
 	# x = BatchNormalization(name='batch_normalization_1')(x)
-	x = activation_quant(num_bits=activation_bits, max_value=3, name='activation_quant_1')(layer_input_1)
-	x = conv2d_noise(16, strides=1, padding='same', noise_train=weight_noise_train, noise_test=weight_noise_test, name='conv2d_noise_2')(x)
-	x = BatchNormalization(name='batch_normalization_2')(x)
-	y = keras.layers.add([y, x])
-	y = activation_quant(num_bits=activation_bits, max_value=3, name='activation_quant_2')(y)
+	# x = activation_quant(num_bits=activation_bits, max_value=3, name='activation_quant_1')(layer_input_1)
+	# x = conv2d_noise(16, strides=1, padding='same', noise_train=weight_noise_train, noise_test=weight_noise_test, name='conv2d_noise_2')(x)
+	# x = BatchNormalization(name='batch_normalization_2')(x)
+	# y = keras.layers.add([y, layer_input_1])
+	y = activation_quant(num_bits=activation_bits, max_value=3, name='activation_quant_2')(layer_input_0)
 
 	# Stack 1, block 2
-	x = conv2d_noise(16, strides=1, padding='same', noise_train=weight_noise_train, noise_test=weight_noise_test, name='conv2d_noise_3')(y)
-	x = BatchNormalization(name='batch_normalization_3')(x)
-	x = activation_quant(num_bits=activation_bits, max_value=3, name='activation_quant_3')(x)
+	# x = conv2d_noise(16, strides=1, padding='same', noise_train=weight_noise_train, noise_test=weight_noise_test, name='conv2d_noise_3')(y)
+	# x = BatchNormalization(name='batch_normalization_3')(x)
+	x = activation_quant(num_bits=activation_bits, max_value=3, name='activation_quant_3')(layer_input_1)
 	x = conv2d_noise(16, strides=1, padding='same', noise_train=weight_noise_train, noise_test=weight_noise_test, name='conv2d_noise_4')(x)
 	x = BatchNormalization(name='batch_normalization_4')(x)
 	y = keras.layers.add([y, x])
@@ -172,10 +172,10 @@ DATA_PATH = '/scratch/users/weierwan/forward_finetune/'
 train_previous_inputs = 0
 test_previous_inputs = 0
 for i in range(num_segment_previous):
-	tmp = np.load(os.path.join(DATA_PATH, '%s_%d_train_2.npz' % (finetune_previous_layer, i)))
-	train_previous_inputs += (tmp['out_chip'] - tmp['intercept']) / tmp['slope']
-	tmp = np.load(os.path.join(DATA_PATH, '%s_%d_test_2.npz' % (finetune_previous_layer, i)))
-	test_previous_inputs += (tmp['out_chip'] - tmp['intercept']) / tmp['slope']
+	train_previous_inputs = np.load(os.path.join(DATA_PATH, '%s_%d_train.npy' % (finetune_previous_layer, i)))
+	# train_previous_inputs += (tmp['out_chip'] - tmp['intercept']) / tmp['slope']
+	test_previous_inputs = np.load(os.path.join(DATA_PATH, '%s_%d_test.npy' % (finetune_previous_layer, i)))
+	# test_previous_inputs += (tmp['out_chip'] - tmp['intercept']) / tmp['slope']
 train_current_inputs = 0
 test_current_inputs = 0
 for i in range(num_segment_current):

@@ -11,10 +11,13 @@ def resnet_layer(inputs,
                  kernel_size=3,
                  strides=1,
                  activation='relu',
+                 relu_decay=0.0,
                  batch_normalization=True,
                  conv_first=True,
                  activation_bits=None,
-                 weight_noise=None,
+                 weight_noise_train=None,
+                 weight_noise_test=None,
+                 weight_bits=None,
                  trainable=True):
     """2D Convolution-Batch Normalization-Activation stack builder
 
@@ -31,7 +34,7 @@ def resnet_layer(inputs,
     # Returns
         x (tensor): tensor as input to the next layer
     """
-    if weight_noise is None:
+    if weight_noise_train is None and weight_noise_test is None and weight_bits is None:
         conv = Conv2D(num_filters,
                       kernel_size=kernel_size,
                       strides=strides,
@@ -44,7 +47,9 @@ def resnet_layer(inputs,
                             kernel_size=kernel_size,
                             strides=strides,
                             padding='same',
-                            noise_magnitude=weight_noise,
+                            noise_train=weight_noise_train,
+                            noise_test=weight_noise_test,
+                            num_bits=weight_bits,
                             trainable=trainable)
 
     x = inputs
@@ -56,7 +61,7 @@ def resnet_layer(inputs,
             if activation_bits is None:
                 x = Activation(activation)(x)
             else:
-                x = activation_quant(num_bits=activation_bits, max_value=3, trainable=trainable)(x)
+                x = activation_quant(num_bits=activation_bits, max_value=3, decay=relu_decay, trainable=trainable)(x)
     else:
         if batch_normalization:
             x = BatchNormalization(trainable=trainable)(x)
@@ -64,12 +69,13 @@ def resnet_layer(inputs,
             if activation_bits is None:
                 x = Activation(activation)(x)
             else:
-                x = activation_quant(num_bits=activation_bits, max_value=3, trainable=trainable)(x)
+                x = activation_quant(num_bits=activation_bits, max_value=3, decay=relu_decay, trainable=trainable)(x)
         x = conv(x)
     return x
 
 
-def resnet_v1(input_shape, depth, num_classes=10, activation_bits=None, weight_noise=None, trainable_conv=True, trainable_dense=True):
+def resnet_v1(input_shape, depth, num_classes=10, activation_bits=None, relu_decay=0.0, weight_noise_train=None, weight_noise_test=None,
+              weight_bits=None, trainable_conv=True, trainable_dense=True):
     """ResNet Version 1 Model builder [a]
 
     Stacks of 2 x (3 x 3) Conv2D-BN-ReLU
@@ -108,7 +114,10 @@ def resnet_v1(input_shape, depth, num_classes=10, activation_bits=None, weight_n
     x = resnet_layer(inputs=inputs,
                      num_filters=num_filters,
                      activation_bits=activation_bits,
-                     weight_noise=weight_noise,
+                     relu_decay=relu_decay,
+                     weight_noise_train=weight_noise_train,
+                     weight_noise_test=weight_noise_test,
+                     weight_bits=weight_bits,
                      trainable=trainable_conv)
     # Instantiate the stack of residual units
     for stack in range(3):
@@ -120,13 +129,18 @@ def resnet_v1(input_shape, depth, num_classes=10, activation_bits=None, weight_n
                              num_filters=num_filters,
                              strides=strides,
                              activation_bits=activation_bits,
-                             weight_noise=weight_noise,
+                             relu_decay=relu_decay,
+                             weight_noise_train=weight_noise_train,
+                             weight_noise_test=weight_noise_test,
+                             weight_bits=weight_bits,
                              trainable=trainable_conv)
             y = resnet_layer(inputs=y,
                              num_filters=num_filters,
                              activation=None,
                              activation_bits=activation_bits,
-                             weight_noise=weight_noise,
+                             weight_noise_train=weight_noise_train,
+                             weight_noise_test=weight_noise_test,
+                             weight_bits=weight_bits,
                              trainable=trainable_conv)
             if stack > 0 and res_block == 0:  # first layer but not first stack
                 # linear projection residual shortcut connection to match
@@ -138,13 +152,15 @@ def resnet_v1(input_shape, depth, num_classes=10, activation_bits=None, weight_n
                                  activation=None,
                                  batch_normalization=False,
                                  activation_bits=activation_bits,
-                                 weight_noise=weight_noise,
+                                 weight_noise_train=weight_noise_train,
+                                 weight_noise_test=weight_noise_test,
+                                 weight_bits=weight_bits,
                                  trainable=trainable_conv)
             x = keras.layers.add([x, y])
             if (activation_bits is None) or (stack == 2 and res_block == num_res_blocks - 1):
                 x = Activation('relu')(x)
             else:
-                x = activation_quant(num_bits=activation_bits, max_value=3, trainable=trainable_conv)(x)
+                x = activation_quant(num_bits=activation_bits, max_value=3, decay=relu_decay, trainable=trainable_conv)(x)
         num_filters *= 2
 
     # Add classifier on top.
@@ -152,8 +168,8 @@ def resnet_v1(input_shape, depth, num_classes=10, activation_bits=None, weight_n
     x = AveragePooling2D(pool_size=8)(x)
     y = Flatten()(x)
     if activation_bits is not None:
-        y = activation_quant(num_bits=activation_bits, max_value=3, trainable=trainable_dense)(y)
-    if weight_noise is None:
+        y = activation_quant(num_bits=activation_bits, decay=relu_decay, max_value=3, trainable=trainable_dense)(y)
+    if weight_noise_train is None and weight_noise_test is None and weight_bits is None:
         outputs = Dense(num_classes,
                         activation='softmax',
                         kernel_initializer='he_normal',
@@ -161,7 +177,9 @@ def resnet_v1(input_shape, depth, num_classes=10, activation_bits=None, weight_n
     else:
         outputs = dense_noise(num_classes,
                               activation='softmax',
-                              noise_magnitude=weight_noise,
+                              noise_train=weight_noise_train,
+                              noise_test=weight_noise_test,
+                              num_bits=weight_bits,
                               trainable=trainable_dense)(y)
 
     # Instantiate model.
@@ -169,7 +187,8 @@ def resnet_v1(input_shape, depth, num_classes=10, activation_bits=None, weight_n
     return model
 
 
-def resnet_v2(input_shape, depth, num_classes=10, activation_bits=None, weight_noise=None, trainable_conv=True, trainable_dense=True):
+def resnet_v2(input_shape, depth, num_classes=10, activation_bits=None, relu_decay=0.0, weight_noise_train=None, weight_noise_test=None,
+              weight_bits=None, trainable_conv=True, trainable_dense=True):
     """ResNet Version 2 Model builder [b]
 
     Stacks of (1 x 1)-(3 x 3)-(1 x 1) BN-ReLU-Conv2D or also known as
@@ -207,7 +226,10 @@ def resnet_v2(input_shape, depth, num_classes=10, activation_bits=None, weight_n
                      num_filters=num_filters_in,
                      conv_first=True,
                      activation_bits=activation_bits,
-                     weight_noise=weight_noise,
+                     relu_decay=relu_decay,
+                     weight_noise_train=weight_noise_train,
+                     weight_noise_test=weight_noise_test,
+                     weight_bits=weight_bits,
                      trainable=trainable_conv)
 
     # Instantiate the stack of residual units
@@ -235,20 +257,29 @@ def resnet_v2(input_shape, depth, num_classes=10, activation_bits=None, weight_n
                              batch_normalization=batch_normalization,
                              conv_first=False,
                              activation_bits=activation_bits,
-                     		 weight_noise=weight_noise,
+                             relu_decay=relu_decay,
+                     		 weight_noise_train=weight_noise_train,
+                             weight_noise_test=weight_noise_test,
+                             weight_bits=weight_bits,
                              trainable=trainable_conv)
             y = resnet_layer(inputs=y,
                              num_filters=num_filters_in,
                              conv_first=False,
                              activation_bits=activation_bits,
-                     		 weight_noise=weight_noise,
+                             relu_decay=relu_decay,
+                     		 weight_noise_train=weight_noise_train,
+                             weight_noise_test=weight_noise_test,
+                             weight_bits=weight_bits,
                              trainable=trainable_conv)
             y = resnet_layer(inputs=y,
                              num_filters=num_filters_out,
                              kernel_size=1,
                              conv_first=False,
                              activation_bits=activation_bits,
-                     		 weight_noise=weight_noise,
+                             relu_decay=relu_decay,
+                     		 weight_noise_train=weight_noise_train,
+                             weight_noise_test=weight_noise_test,
+                             weight_bits=weight_bits,
                              trainable=trainable_conv)
             if res_block == 0:
                 # linear projection residual shortcut connection to match
@@ -260,7 +291,9 @@ def resnet_v2(input_shape, depth, num_classes=10, activation_bits=None, weight_n
                                  activation=None,
                                  batch_normalization=False,
                                  activation_bits=activation_bits,
-                     			 weight_noise=weight_noise,
+                     			 weight_noise_train=weight_noise_train,
+                                 weight_noise_test=weight_noise_test,
+                                 weight_bits=weight_bits,
                                  trainable=trainable_conv)
             x = keras.layers.add([x, y])
 
@@ -274,8 +307,8 @@ def resnet_v2(input_shape, depth, num_classes=10, activation_bits=None, weight_n
     if activation_bits is None:
         y = Activation('relu')(y)
     else:
-        y = activation_quant(num_bits=activation_bits, max_value=3, trainable=trainable_dense)(y)
-    if weight_noise is None:
+        y = activation_quant(num_bits=activation_bits, max_value=3, decay=relu_decay, trainable=trainable_dense)(y)
+    if weight_noise_train is None and weight_noise_test is None and weight_bits is None:
         outputs = Dense(num_classes,
                         activation='softmax',
                         kernel_initializer='he_normal',
@@ -283,7 +316,9 @@ def resnet_v2(input_shape, depth, num_classes=10, activation_bits=None, weight_n
     else:
         outputs = dense_noise(num_classes,
                               activation='softmax',
-                              noise_magnitude=weight_noise,
+                              noise_train=weight_noise_train,
+                              noise_test=weight_noise_test,
+                              num_bits=weight_bits,
                               trainable=trainable_dense)(y)
 
     # Instantiate model.
