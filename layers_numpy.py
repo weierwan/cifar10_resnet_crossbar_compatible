@@ -18,7 +18,7 @@ def conv(x, w, b, stride=1, pad=(0,0), segment_index=None, bias=True):
   HC = int(1 + (H + pad[0] + pad[1] - HH) / stride)
   WC = int(1 + (W + pad[0] + pad[1] - WW) / stride)
   
-  out = np.zeros([N,HC,WC,F])
+  out = np.zeros([N,HC,WC,F], dtype=np.float32)
   x_pad = np.pad(x, ((0,0),(pad[0],pad[1]),(pad[0],pad[1]),(0,0)), mode='constant')
 
   for row in range(HC):

@@ -41,18 +41,10 @@ subtract_pixel_mean = False
 # ---------------------------------------------------------------------------
 n = 3
 version = 1
-activation_bits = int(sys.argv[1])
-if len(sys.argv) == 2:
-    weight_noise = None
-    model_name = 'act%db_wnoiseNone' % activation_bits
-else:
-    weight_noise = float(sys.argv[2])
-    model_name = 'act%db_wnoise%.2f' % (activation_bits, weight_noise)
-
-if len(sys.argv) >= 4:
-    version = int(sys.argv[3])
-if len(sys.argv) >= 5:
-    n = int(sys.argv[4])
+activation_bits = None
+weight_noise = None
+weight_bits = 4
+model_name = 'weight_quant_%db' % weight_bits
 
 
 # Computed depth from supplied model parameter n
@@ -89,9 +81,6 @@ print('y_train shape:', y_train.shape)
 # Convert class vectors to binary class matrices.
 y_train = keras.utils.to_categorical(y_train, num_classes)
 y_test = keras.utils.to_categorical(y_test, num_classes)
-
-x_train = quantize_rescale(quantize_unsigned(x_train, 4, 0.95), 4, 0.95)
-x_test = quantize_rescale(quantize_unsigned(x_test, 4, 0.95), 4, 0.95)
 
 
 def lr_schedule(epoch):
@@ -136,8 +125,6 @@ else:
                         depth=depth,
                         activation_bits=activation_bits,
                         weight_noise_train=weight_noise,
-                        weight_noise_test=0.0,
-                        relu_decay=1e-3,
                         trainable_conv=not finetune,
                         trainable_dense=True)
   else:
@@ -145,8 +132,7 @@ else:
                         depth=depth,
                         activation_bits=activation_bits,
                         weight_noise_train=weight_noise,
-                        weight_noise_test=0.0,
-                        relu_decay=0.0,
+                        weight_bits=weight_bits,
                         trainable_conv=not finetune,
                         trainable_dense=True)
 

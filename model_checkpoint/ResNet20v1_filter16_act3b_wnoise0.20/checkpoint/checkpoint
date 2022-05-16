@@ -1,2 +1,0 @@
-model_checkpoint_path: "ResNet20v1_filter16_act3b_wnoise0.20"
-all_model_checkpoint_paths: "ResNet20v1_filter16_act3b_wnoise0.20"

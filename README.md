@@ -1,4 +1,4 @@
-# Crossbar Compatible ResNet Training
+# RRAM Compute-In-Memory Noise-Resilient ResNet Training
 
 The codes are adapted from [the official keras example](https://github.com/keras-team/keras/blob/master/examples/cifar10_resnet.py)
 
@@ -8,6 +8,8 @@ To train a model:
 ```
 python cifar10_resnet.py 3 0.2 1 3
 ```
-where the first argument is the bit precision of the activations and the inputs; the second argument is the strength of the injected Gaussian noise (relative to the maximum absolute value of the weights of that layer); the thrid argument (optional) is the version of ResNet and the forth argument (optional) is the depth of ResNet.
+where the first argument is the bit-precision of the activations; the second argument is the strength of the injected Gaussian noise (relative to the maximum absolute value of the weights of that layer); the thrid argument (optional) is the version of ResNet and the forth argument (optional) is the depth of ResNet.
 
-To test the model's resiliency to different weight noise strength, use the [CIFAR10_CNN.ipynb](CIFAR10_CNN.ipynb).
+To test the model's resiliency to different weight noise strength, use [inference.ipynb](inference.ipynb).
+
+To perform chip-in-the-loop finetuning, use [finetuning.ipynb](finetuning.ipynb).
